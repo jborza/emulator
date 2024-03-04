@@ -20,10 +20,14 @@ impl Registers {
 }
 
 struct FlagsRegister {
-  zero: bool,
-  subtract: bool,
-  half_carry: bool,
-  carry: bool,
+    //set if the result of operation is 0
+    zero: bool,
+    //set if the operation was a subtraction
+    subtract: bool,
+    //set if there was was an oveflow from the lower nibble to the upper nibble
+    half_carry: bool,
+    //
+    carry: bool,
 }
 
 const ZERO_BYTE_POSITION: u8 = 7;
