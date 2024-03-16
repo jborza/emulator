@@ -336,4 +336,155 @@ impl CPU {
         new_value
     }
 
+    // INC (increment) - increment the value in a specific register by 1
+    fn inc(&mut self, value: u8) -> u8 {
+        let new_value = value.wrapping_add(1);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = (value & 0xF) + 1 > 0xF;
+        
+        new_value
+    }
+
+    // DEC (decrement) - decrement the value in a specific register by 1
+    fn dec(&mut self, value: u8) -> u8 {
+        let new_value = value.wrapping_sub(1);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = true;
+        self.registers.flags.half_carry = (value & 0xF) < 1;
+        
+        new_value
+    }
+
+    // CCF (complement carry flag) - toggle the value of the carry flag
+    fn ccf(&mut self) {
+        self.registers.flags.carry = !self.registers.flags.carry;
+    }
+
+    // SCF (set carry flag) - set the carry flag to true
+    fn scf(&mut self) {
+        self.registers.flags.carry = true;
+    }
+
+    // RRA (rotate right A register) - bit rotate A register right through the carry flag
+    fn rra(&mut self) {
+        let carry = self.registers.flags.carry;
+        self.registers.flags.carry = self.registers.a & 1 != 0;
+        self.registers.a = (self.registers.a >> 1) | (carry << 7);
+    }
+
+    // RLA (rotate left A register) - bit rotate A register left through the carry flag
+    fn rla(&mut self) {
+        let carry = self.registers.flags.carry;
+        self.registers.flags.carry = self.registers.a & 0x80 != 0;
+        self.registers.a = (self.registers.a << 1) | carry;
+    }
+
+    // RRCA (rotate right A register) - bit rotate A register right (not through the carry flag)
+    fn rrca(&mut self) {
+        self.registers.flags.carry = self.registers.a & 1 != 0;
+        self.registers.a = (self.registers.a >> 1) | (self.registers.a << 7);
+    }
+
+    // RRLA (rotate left A register) - bit rotate A register left (not through the carry flag)
+    fn rrla(&mut self) {
+        self.registers.flags.carry = self.registers.a & 0x80 != 0;
+        self.registers.a = (self.registers.a << 1) | (self.registers.a >> 7);
+    }
+
+    // CPL (complement) - toggle every bit of the A register
+    fn cpl(&mut self) {
+        self.registers.a = !self.registers.a;
+    }
+
+    // BIT (bit test) - test to see if a specific bit of a specific register is set
+    fn bit(&mut self, value: u8) {
+        self.registers.flags.zero = (self.registers.a & (1 << value)) == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = true; //TODO check
+    }
+
+    // RESET (bit reset) - set a specific bit of a specific register to 0
+    fn reset(&mut self, value: u8) {
+        self.registers.a &= !(1 << value);
+    }
+
+    // SET (bit set) - set a specific bit of a specific register to 1
+    fn set(&mut self, value: u8) {
+        self.registers.a |= 1 << value;
+    }
+
+    // SRL (shift right logical) - bit shift a specific register right by 1
+    fn srl(&mut self, value: u8) {
+        self.registers.flags.carry = value & 1 != 0;
+        self.registers.a = value >> 1;
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+
+    // RR (rotate right) - bit rotate a specific register right by 1 through the carry flag
+    fn rr(&mut self, value: u8) {
+        let carry = self.registers.flags.carry;
+        self.registers.flags.carry = value & 1 != 0;
+        self.registers.a = (value >> 1) | (carry << 7);
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+
+    // RL (rotate left) - bit rotate a specific register left by 1 through the carry flag
+    fn rl(&mut self, value: u8) {
+        let carry = self.registers.flags.carry;
+        self.registers.flags.carry = value & 0x80 != 0;
+        self.registers.a = (value << 1) | carry;
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+    
+    // RRC (rotate right) - bit rotate a specific register right by 1 (not through the carry flag)
+    fn rrc(&mut self, value: u8) {
+        self.registers.flags.carry = value & 1 != 0;
+        self.registers.a = (value >> 1) | (value << 7);
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+
+    // RLC (rotate left) - bit rotate a specific register left by 1 (not through the carry flag)
+    fn rlc(&mut self, value: u8) {
+        self.registers.flags.carry = value & 0x80 != 0;
+        self.registers.a = (value << 1) | (value >> 7);
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+    
+    // SRA (shift right arithmetic) - arithmetic shift a specific register right by 1
+    fn sra(&mut self, value: u8) {
+        self.registers.flags.carry = value & 1 != 0;
+        self.registers.a = (value >> 1) | (value & 0x80);
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+
+    // SLA (shift left arithmetic) - arithmetic shift a specific register left by 1
+    fn sla(&mut self, value: u8) {
+        self.registers.flags.carry = value & 0x80 != 0;
+        self.registers.a = value << 1;
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+    }
+    
+    // SWAP (swap nibbles) - switch upper and lower nibble of a specific register
+    fn swap(&mut self, value: u8) {
+        self.registers.a = (value << 4) | (value >> 4);
+        self.registers.flags.zero = self.registers.a == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+        self.registers.flags.carry = false;
+    }
 }
