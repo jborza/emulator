@@ -16,6 +16,9 @@ impl CPU {
                 let value = self.registers.c;
                 let new_value = self.add(value);
                 self.registershl = new_value;
+                self.flags.zero = result == 0;
+                self.flags.subtract = false;
+                self.flags.half_carry = (self.registers.a & 0xF) + (value & 0xF) > 0xF;
             }
             Instruction::ADC(target) => {
                 //just like add, the the target is added to the A register, value of carry also added
@@ -237,6 +240,100 @@ impl CPU {
         new_value
     }
 
+    // ADDHL (add to HL) - just like ADD except that the target is added to the HL register
+    fn addhl(&mut self, value: u8) -> u8 {
+        let (new_value, did_overflow) = self.registers.hl.overflowing_add(value);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.carry = did_overflow;
+        // set if adding the lower nibbles and register A is greater than 0xF
+        // if it is, then the addition caused a carry from the lower nibble to the upper nibble
+        self.registers.flags.half_carry = (self.registers.hl & 0xF) + (value & 0xF) > 0xF;
+        
+        new_value
+    }
 
+    // ADC (add with carry) - just like ADD except that the value of the carry flag is also added to the number
+    fn adc(&mut self, value: u8) -> u8 {
+        let (new_value, did_overflow) = self.registers.a.overflowing_add(value + self.registers.flags.carry as u8);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.carry = did_overflow;
+        // set if adding the lower nibbles and register A is greater than 0xF
+        // if it is, then the addition caused a carry from the lower nibble to the upper nibble
+        self.registers.flags.half_carry = (self.registers.a & 0xF) + (value & 0xF) > 0xF;
+        
+        new_value
+    }
+
+    // SUB (subtract) - subtract the value stored in a specific register with the value in the A register
+    fn sub(&mut self, value: u8) -> u8 {
+        let (new_value, did_overflow) = self.registers.a.overflowing_sub(value);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = true;
+        self.registers.flags.carry = did_overflow;
+        // set if adding the lower nibbles and register A is greater than 0xF
+        // if it is, then the addition caused a carry from the lower nibble to the upper nibble
+        self.registers.flags.half_carry = (self.registers.a & 0xF) < (value & 0xF);
+        
+        new_value
+    }
+
+    // SBC (subtract with carry) - just like ADD except that the value of the carry flag is also subtracted from the number
+    fn sbc(&mut self, value: u8) -> u8 {
+        let (new_value, did_overflow) = self.registers.a.overflowing_sub(value - self.registers.flags.carry as u8);
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = true;
+        self.registers.flags.carry = did_overflow;
+        // set if adding the lower nibbles and register A is greater than 0xF
+        // if it is, then the addition caused a carry from the lower nibble to the upper nibble
+        self.registers.flags.half_carry = (self.registers.a & 0xF) < (value & 0xF);
+        
+        new_value
+    }
+
+    // AND (logical and) - do a bitwise and on the value in a specific register and the value in the A register
+    fn and(&mut self, value: u8) -> u8 {
+        let new_value = self.registers.a & value;
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = true; 
+        self.registers.flags.carry = false;
+        
+        new_value
+    }
+
+    // OR (logical or) - do a bitwise or on the value in a specific register and the value in the A register
+    fn or(&mut self, value: u8) -> u8 {
+        let new_value = self.registers.a | value;
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false;
+        self.registers.flags.half_carry = false;
+        self.registers.flags.carry = false;
+        
+        new_value
+    }
+
+    // XOR (logical xor) - do a bitwise xor on the value in a specific register and the value in the A register
+    fn xor(&mut self, value: u8) -> u8 {
+        let new_value = self.registers.a ^ value;
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = false; 
+        self.registers.flags.half_carry = false;
+        self.registers.flags.carry = false;
+        
+        new_value
+    }
+
+    // CP (compare) - just like SUB except the result of the subtraction is not stored back into A
+    fn cp(&mut self, value: u8) -> u8 {
+        let new_value = self.registers.a.overflowing_sub(value).0;
+        self.registers.flags.zero = new_value == 0;
+        self.registers.flags.subtract = true;
+        self.registers.flags.carry = new_value > self.registers.a;
+        self.registers.flags.half_carry = (self.registers.a & 0xF) < (value & 0xF);
+        
+        new_value
+    }
 
 }
