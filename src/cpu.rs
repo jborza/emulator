@@ -1,4 +1,22 @@
+struct CPU {
+    registers: Registers,
+    pc: u16,
+    bus: MemoryBus,
+}
+
 impl CPU {
+    fn step(&mut self) {
+        let mut instruction_byte = self.bus.read_byte(self.pc);
+
+        let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte) {
+            self.execute(instruction);
+        } else {
+            panic!("Unknown instruction: {:#04X}", instruction_byte);
+        };
+
+        self.pc = next_pc;
+    }
+
     fn execute(&mut self, instruction: Instruction){
         match instruction{
             Instruction::ADD(target) => {
@@ -7,6 +25,7 @@ impl CPU {
                         let value = self.registers.c;
                         let new_value = self.add(value);
                         self.registers.a = new_value;
+                        self.pc.wrapping_add(1)
                     }
                     _=> { /* more targets */ }
                 }
